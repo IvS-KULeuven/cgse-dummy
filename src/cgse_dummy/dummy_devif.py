@@ -1,3 +1,14 @@
+"""
+The device driver for the dummy device.
+
+The device driver has an Ethernet interface that listens to the port specified in the Settings file in the section
+'DUMMY DEVICE'.
+
+"""
+__all__ = [
+    "DummyEthernetInterface",
+]
+
 import logging
 import socket
 import time
@@ -11,7 +22,7 @@ from egse.settings import Settings
 
 logging.basicConfig(level=logging.DEBUG)
 
-_LOGGER = logging.getLogger("egse.dummy.dev_if")
+_LOGGER = logging.getLogger("egse.dummy.devif")
 _VERSION = "0.0.1"
 
 IDENTIFICATION_QUERY = "*IDN?"
@@ -19,7 +30,7 @@ IDENTIFICATION_QUERY = "*IDN?"
 DEVICE_SETTINGS = Settings.load("DUMMY DEVICE")
 CS_SETTINGS = Settings.load("DUMMY CS")
 
-READ_TIMEOUT = DEVICE_SETTINGS.TIMEOUT      # [s], can be smaller than timeout (for Proxy) (e.g. 1s)
+READ_TIMEOUT = DEVICE_SETTINGS.TIMEOUT  # [s], can be smaller than timeout (for Proxy) (e.g. 1s)
 
 
 class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
@@ -48,13 +59,18 @@ class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
 
         self.is_connection_open = False
 
-    def connect(self):
-        """ Connects the device.
+    def connect(self) -> None:
+        """
+        Connects the device.
+
+        If the connection is already open, a warning will be issued and the function returns.
 
         Raises:
             DeviceConnectionError: When the connection could not be established. Check the logging messages for more
                                    details.
+
             DeviceTimeoutError: When the connection timed out.
+
             ValueError: When hostname or port number are not provided.
         """
 
@@ -123,8 +139,9 @@ class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
                 DEVICE_SETTINGS.MODEL, "Device is not connected, check logging messages for the cause."
             )
 
-    def disconnect(self):
-        """ Disconnects from the Ethernet connection.
+    def disconnect(self) -> None:
+        """
+        Disconnects from the Ethernet connection.
 
         Raises:
             DeviceConnectionError when the socket could not be closed.
@@ -151,27 +168,29 @@ class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
         self.connect()
 
     def is_connected(self) -> bool:
-        """ Checks if the device is connected.
+        """
+        Checks if the device is connected.
 
         This will send a query for the device identification and validate the answer.
 
-        Returns: True is the device is connected and answered with the proper ID; False otherwise.
+        Returns:
+            True is the device is connected and answered with the proper IDN; False otherwise.
         """
 
         if not self.is_connection_open:
             return False
 
         try:
-            version = self.query(IDENTIFICATION_QUERY).decode()
+            idn = self.query(IDENTIFICATION_QUERY).decode()
         except DeviceError as exc:
             _LOGGER.exception(exc)
             _LOGGER.error("Most probably the client connection was closed. Disconnecting...")
             self.disconnect()
             return False
 
-        if DEVICE_SETTINGS.MODEL not in version:
+        if DEVICE_SETTINGS.MODEL not in idn:
             _LOGGER.error(
-                f'Device did not respond correctly to a "{IDENTIFICATION_QUERY}" command, response={version}. '
+                f'Device did not respond correctly to a "{IDENTIFICATION_QUERY}" command, response={idn}. '
                 f"Disconnecting..."
             )
             self.disconnect()
@@ -180,7 +199,8 @@ class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
         return True
 
     def write(self, command: str):
-        """ Senda a single command to the device controller without waiting for a response.
+        """
+        Sends a single command to the device controller without waiting for a response.
 
         Args:
             command (str): Command to send to the controller
@@ -251,9 +271,11 @@ class DummyEthernetInterface(DeviceConnectionInterface, DeviceTransport):
             raise
 
     def read(self) -> bytes:
-        """ Reads from the device buffer.
+        """
+        Reads from the device buffer.
 
-        Returns: Content of the device buffer.
+        Returns:
+            The content of the device buffer.
         """
 
         n_total = 0

@@ -38,11 +38,10 @@ def start_dummy_sim():
     rich.print("Starting service DUMMY Simulator")
 
     out = open(Path('~/.dummy_sim.start.out').expanduser(), 'w')
-    err = open(Path('~/.dummy_sim.start.err').expanduser(), 'w')
 
     subprocess.Popen(
         [sys.executable, '-m', 'cgse_dummy.dummy_sim', 'start'],
-        stdout=out, stderr=err, stdin=subprocess.DEVNULL,
+        stdout=out, stderr=out, stdin=subprocess.DEVNULL,
         close_fds=True
     )
 
@@ -53,11 +52,10 @@ def stop_dummy_sim():
     rich.print("Terminating the DUMMY simulator.")
 
     out = open(Path('~/.dummy_sim.stop.out').expanduser(), 'w')
-    err = open(Path('~/.dummy_sim.stop.err').expanduser(), 'w')
 
     subprocess.Popen(
         [sys.executable, '-m', 'cgse_dummy.dummy_sim', 'stop'],
-        stdout=out, stderr=err, stdin=subprocess.DEVNULL,
+        stdout=out, stderr=out, stdin=subprocess.DEVNULL,
         close_fds=True
     )
 
@@ -66,16 +64,16 @@ def stop_dummy_sim():
 def status_dummy_sim():
     """Print status information on the dummy device simulator."""
 
-    err = open(Path('~/.dummy_sim.status.err').expanduser(), 'w')
-
     proc = subprocess.Popen(
         [sys.executable, '-m', 'cgse_dummy.dummy_sim', 'status'],
-        stdout=subprocess.PIPE, stderr=err, stdin=subprocess.DEVNULL
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL
     )
 
-    stdout, _ = proc.communicate()
+    stdout, stderr = proc.communicate()
 
     rich.print(stdout.decode(), end='')
+    if stderr:
+        rich.print(stderr.decode())
 
 
 if __name__ == '__main__':

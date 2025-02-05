@@ -1,14 +1,29 @@
+"""
+The dummy device is a virtual device that is developed as a demonstration of how an external package, that delivers a
+device interface for the CGSE, can be implemented.
+
+The simulator listens on the Ethernet socket port number 5555, unless another port number is specified in the
+Settings file under the section 'DUMMY DEVICE'.
+
+The following commands are implemented:
+
+- *IDN? — request identification of the device
+
+"""
+
 import contextlib
 import datetime
 import logging
 import re
 import socket
+import sys
 
 import typer
+from egse.device import DeviceConnectionError
 from egse.settings import Settings
 from egse.system import SignalCatcher
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 _LOGGER = logging.getLogger("egse.dummy.sim")
 _VERSION = "0.0.1"
@@ -16,7 +31,15 @@ _VERSION = "0.0.1"
 DEVICE_SETTINGS = Settings.load("DUMMY DEVICE")
 CS_SETTINGS = Settings.load("DUMMY CS")
 
-HOST = CS_SETTINGS.HOSTNAME
+try:
+    HOSTNAME = CS_SETTINGS.HOSTNAME
+except AttributeError:
+    HOSTNAME = "localhost"
+
+try:
+    PORT = CS_SETTINGS.PORT
+except AttributeError:
+    PORT = 5555
 
 device_time = datetime.datetime.now(datetime.timezone.utc)
 reference_time = device_time
@@ -134,21 +157,25 @@ def process_command(command_string: str) -> str:
 
 
 def run_simulator():
-
+    """
+    Raises:
+        OSError: when the simulator is already running.
+    """
     global error_msg
 
     _LOGGER.info(f"Starting the {DEVICE_SETTINGS.MODEL} Simulator")
 
     killer = SignalCatcher()
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, DEVICE_SETTINGS.PORT))
-        s.listen()
-        s.settimeout(2.0)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((HOSTNAME, PORT))
+        sock.listen()
+        sock.settimeout(2.0)
         while True:
             while True:
                 with contextlib.suppress(socket.timeout):
-                    conn, addr = s.accept()
+                    conn, addr = sock.accept()
                     break
                 if killer.term_signal_received:
                     return
@@ -164,7 +191,7 @@ def run_simulator():
                             _LOGGER.info(f"{data = }")
                             if data.strip() == "STOP":
                                 _LOGGER.info("Client requested to terminate...")
-                                s.close()
+                                sock.close()
                                 return
                             for cmd in data.split(';'):
                                 response = process_command(cmd.strip())
@@ -175,7 +202,7 @@ def run_simulator():
                                 break
                         if killer.term_signal_received:
                             _LOGGER.info("Terminating...")
-                            s.close()
+                            sock.close()
                             return
                         if killer.user_signal_received:
                             if killer.signal_name == "SIGUSR1":
@@ -194,7 +221,7 @@ def send_request(cmd: str):
 
     from cgse_dummy.dummy_devif import DummyEthernetInterface
 
-    daq_dev = DummyEthernetInterface(hostname=DEVICE_SETTINGS.HOSTNAME, port=DEVICE_SETTINGS.PORT)
+    daq_dev = DummyEthernetInterface(hostname=HOSTNAME, port=PORT)
     daq_dev.connect()
 
     response = daq_dev.query(cmd)
@@ -206,19 +233,28 @@ def send_request(cmd: str):
 
 @app.command()
 def start():
-    run_simulator()
+    try:
+        run_simulator()
+    except OSError as exc:
+        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
 
 
 @app.command()
 def status():
-    response = send_request("*IDN?")
-    print(f"{response}")
+    try:
+        response = send_request("*IDN?")
+        print(f"{response.decode().rstrip()}")
+    except DeviceConnectionError as exc:
+        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
 
 
 @app.command()
 def stop():
-    response = send_request("STOP")
-    print(f"{response}")
+    try:
+        response = send_request("STOP")
+        print(f"{response.decode().rstrip()}")
+    except DeviceConnectionError as exc:
+        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
 
 
 if __name__ == '__main__':

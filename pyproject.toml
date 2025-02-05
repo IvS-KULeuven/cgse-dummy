@@ -1,0 +1,56 @@
+[project]
+name = "cgse-dummy"
+version = "0.1.0"
+description = "Demonstration of a CGSE package with a dummy device driver"
+authors = [
+    {name = "IVS KU Leuven"}
+]
+maintainers = [
+    {name = "Rik Huygen", email = "rik.huygen@kuleuven.be"},
+    {name = "Sara Regibo", email = "sara.regibo@kuleuven.be"}
+]
+readme = {"file" = "README.md", "content-type" = "text/markdown"}
+requires-python = ">=3.9"
+license = "MIT"
+keywords = [
+    "CGSE",
+    "Common-EGSE",
+    "dummy",
+    "hardware testing",
+    "software framework",
+    "temperature control",
+]
+dependencies = [
+    "cgse-common",
+    "cgse-core",
+    "cgse-tools",
+]
+
+[project.entry-points."cgse.version"]
+cgse-dummy = 'egse.version:get_version_installed'
+
+[project.entry-points."cgse.settings"]
+cgse-dummy = "cgse_dummy:settings.yaml"
+
+[project.entry-points."cgse.service"]
+dummy = 'cgse_dummy.cgse_services:dummy'
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "ruff>=0.9.0",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/tests",
+    "/pytest.ini",
+    "/.gitignore",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cgse_dummy"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

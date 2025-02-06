@@ -1,6 +1,6 @@
 [project]
 name = "cgse-dummy"
-version = "0.2.0"
+version = "0.3.0"
 description = "Demonstration of a CGSE package with a dummy device driver"
 authors = [
     {name = "IVS KU Leuven"}
@@ -34,6 +34,9 @@ cgse-dummy = "cgse_dummy:settings.yaml"
 
 [project.entry-points."cgse.service"]
 dummy = 'cgse_dummy.cgse_services:dummy'
+
+[project.entry-points."cgse.explore"]
+explore = "cgse_dummy.cgse_explore"
 
 [dependency-groups]
 dev = [

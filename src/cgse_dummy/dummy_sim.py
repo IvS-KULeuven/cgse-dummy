@@ -15,6 +15,7 @@ import contextlib
 import datetime
 import logging
 import re
+import select
 import socket
 import sys
 
@@ -22,10 +23,12 @@ import typer
 from egse.device import DeviceConnectionError
 from egse.settings import Settings
 from egse.system import SignalCatcher
+from egse.randomwalk import RandomWalk
+
 
 logging.basicConfig(level=logging.INFO)
 
-_LOGGER = logging.getLogger("egse.dummy.sim")
+_LOGGER = logging.getLogger("cgse_dummy.dummy.sim")
 _VERSION = "0.0.1"
 
 DEVICE_SETTINGS = Settings.load("DUMMY DEVICE")
@@ -44,6 +47,8 @@ except AttributeError:
 device_time = datetime.datetime.now(datetime.timezone.utc)
 reference_time = device_time
 error_msg = ""
+
+sensor_1 = RandomWalk()
 
 app = typer.Typer(help=f"{DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} Simulator")
 
@@ -78,8 +83,21 @@ def reset():
     print("RESET")
 
 
+def clear():
+    print("CLEAR")
+
+
+def get_value():
+    return next(sensor_1)
+
+
 COMMAND_ACTIONS_RESPONSES = {
     "*IDN?": (None, f"{DEVICE_SETTINGS.BRAND}, MODEL {DEVICE_SETTINGS.MODEL}, SIMULATOR"),
+    "*RST": (reset, None),
+    "*CLS": (clear, None),
+
+    "info": (None, f"{DEVICE_SETTINGS.BRAND}, MODEL {DEVICE_SETTINGS.MODEL}, SIMULATOR"),
+    "get_value": (None, get_value),
 }
 
 
@@ -89,45 +107,6 @@ COMMAND_PATTERNS_ACTIONS_RESPONSES = {
     r":?SYST(?:em)*:TIME\? 1": (nothing, get_time),
     r":?SYST(?:em)*:BEEP(?:er)* (\d+), (\d+(?:\.\d+)?)": (beep, None),
 }
-
-
-def write(conn, response: str):
-
-    response = f"{response}\n".encode()
-    _LOGGER.debug(f"write: {response = }")
-    conn.sendall(response)
-
-
-def read(conn) -> str:
-    """
-    Reads one command string from the socket, i.e. until a linefeed ('\n') is received.
-
-    Returns:
-        The command string with the linefeed stripped off.
-    """
-
-    idx, n_total = 0, 0
-    buf_size = 1024 * 4
-    command_string = bytes()
-
-    try:
-        for _ in range(100):
-            data = conn.recv(buf_size)
-            n = len(data)
-            n_total += n
-            command_string += data
-            # if data.endswith(b'\n'):
-            if n < buf_size:
-                break
-    except socket.timeout as exc:
-        # _LOGGER.warning(f"Socket timeout error from {exc}")
-        # This timeout is caught at the caller, where the timeout is set.
-        raise
-
-    # _LOGGER.debug(f"Total number of bytes received is {n_total}, idx={idx}")
-    _LOGGER.info(f"read: {command_string=}")
-
-    return command_string.decode().rstrip()
 
 
 def process_command(command_string: str) -> str:
@@ -167,11 +146,13 @@ def run_simulator():
 
     killer = SignalCatcher()
 
+    timeout = 2.0
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind((HOSTNAME, PORT))
         sock.listen()
-        sock.settimeout(2.0)
+        sock.settimeout(timeout)
         while True:
             while True:
                 with contextlib.suppress(socket.timeout):
@@ -181,14 +162,20 @@ def run_simulator():
                     return
             with conn:
                 _LOGGER.info(f'Accepted connection from {addr}')
-                write(conn, f'This is {DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} {_VERSION}.sim')
-                conn.settimeout(2.0)
+                conn.sendall(f'This is {DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} {_VERSION}.sim'.encode())
                 try:
                     error_msg = ""
                     while True:
-                        with contextlib.suppress(socket.timeout):
-                            data = read(conn)
-                            _LOGGER.info(f"{data = }")
+
+                        read_sockets, _, _ = select.select([conn], [], [], timeout)
+
+                        if conn in read_sockets:
+                            data = conn.recv(4096).decode().rstrip()
+                            _LOGGER.debug(f"{data = }")
+                            # Now that we use `select` I don't think the following will ever be true
+                            # if not data:
+                            #     _LOGGER.info("Client closed connection, accepting new connection...")
+                            #     break
                             if data.strip() == "STOP":
                                 _LOGGER.info("Client requested to terminate...")
                                 sock.close()
@@ -196,10 +183,10 @@ def run_simulator():
                             for cmd in data.split(';'):
                                 response = process_command(cmd.strip())
                                 if response is not None:
-                                    write(conn, response)
-                            if not data:
-                                _LOGGER.info("Client closed connection, accepting new connection...")
-                                break
+                                    response_b = f"{response}\n".encode()
+                                    _LOGGER.debug(f"write: {response_b = }")
+                                    conn.sendall(response_b)
+
                         if killer.term_signal_received:
                             _LOGGER.info("Terminating...")
                             sock.close()
@@ -217,7 +204,7 @@ def run_simulator():
                     _LOGGER.info(f"{exc.__class__.__name__} caught: {exc.args}")
 
 
-def send_request(cmd: str):
+def send_request(cmd: str) -> bytes:
 
     from cgse_dummy.dummy_devif import DummyEthernetInterface
 

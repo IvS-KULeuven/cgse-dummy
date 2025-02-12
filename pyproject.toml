@@ -52,7 +52,7 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cgse_dummy"]
+packages = ["src/egse", "src/cgse_dummy"]
 
 [build-system]
 requires = ["hatchling"]

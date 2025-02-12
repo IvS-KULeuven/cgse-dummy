@@ -2,6 +2,7 @@
 #
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import rich
@@ -9,7 +10,13 @@ import typer
 
 dummy = typer.Typer(
     name="dummy",
-    help="DUMMY Data Acquisition Unit",
+    help=textwrap.dedent(
+        """DUMMY Data Acquisition Unit
+        
+        This is a simple simulator of a data acquisition device that can be used to monitor
+        a number of sensors.         
+        """
+    ),
     no_args_is_help=True
 )
 
@@ -17,13 +24,29 @@ dummy = typer.Typer(
 @dummy.command(name="start")
 def start_dummy():
     """Start the dummy service, dummy_cs."""
-    rich.print("Starting service dummy not implemented yet..")
+    rich.print("Starting service dummy_cs..")
+
+    out = open(Path('~/.dummy_cs.start.out').expanduser(), 'w')
+
+    subprocess.Popen(
+        [sys.executable, '-m', 'cgse_dummy.dummy_cs', 'start'],
+        stdout=out, stderr=out, stdin=subprocess.DEVNULL,
+        close_fds=True
+    )
 
 
 @dummy.command(name="stop")
 def stop_dummy():
     """Stop the dummy service, dummy_cs."""
-    rich.print("Terminating service dummy not implemented yet..")
+    rich.print("Terminating service dummy_cs..")
+
+    out = open(Path('~/.dummy_cs.stop.out').expanduser(), 'w')
+
+    subprocess.Popen(
+        [sys.executable, '-m', 'cgse_dummy.dummy_cs', 'stop'],
+        stdout=out, stderr=out, stdin=subprocess.DEVNULL,
+        close_fds=True
+    )
 
 
 @dummy.command(name="status")

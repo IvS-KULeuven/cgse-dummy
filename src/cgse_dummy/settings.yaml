@@ -17,5 +17,5 @@ DUMMY CS:
     SERVICE_PORT:                7772
     METRICS_PORT:                7773
     STORAGE_MNEMONIC:           DUMMY
-    DELAY:                         10
+    HK_DELAY:                      10
     TIMEOUT:                       90

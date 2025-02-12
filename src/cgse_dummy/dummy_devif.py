@@ -22,7 +22,7 @@ from egse.settings import Settings
 
 logging.basicConfig(level=logging.DEBUG)
 
-_LOGGER = logging.getLogger("egse.dummy.devif")
+_LOGGER = logging.getLogger("cgse_dummy.dummy.devif")
 _VERSION = "0.0.1"
 
 IDENTIFICATION_QUERY = "*IDN?"

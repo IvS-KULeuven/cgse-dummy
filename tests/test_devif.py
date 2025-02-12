@@ -41,4 +41,5 @@ def test_send_request():
     from cgse_dummy.dummy_sim import send_request
     response = send_request("*IDN?")
 
-    assert response is None
+    assert b"DUMMY INSTRUMENTS" in response
+    assert b"SIMULATOR" in response

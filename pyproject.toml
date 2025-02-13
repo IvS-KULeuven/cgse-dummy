@@ -1,6 +1,6 @@
 [project]
 name = "cgse-dummy"
-version = "0.4.0"
+version = "0.4.1"
 description = "Demonstration of a CGSE package with a dummy device driver"
 authors = [
     {name = "IVS KU Leuven"}

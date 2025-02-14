@@ -190,6 +190,7 @@ class DummyProtocol(CommandProtocol):
             'COUNT': self._count,
             'PI': 3.14159,  # just to have a constant parameter
             'Random': random.randint(0, 100),  # just to have a variable parameter
+            "T (ºC)": self.device_controller.get_value(),
         }
 
     def quit(self):

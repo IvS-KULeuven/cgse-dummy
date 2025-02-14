@@ -25,6 +25,7 @@ from egse.settings import Settings
 from egse.system import SignalCatcher
 from egse.randomwalk import RandomWalk
 
+from cgse_dummy.sim_data import SimulatedTemperature
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,7 +49,7 @@ device_time = datetime.datetime.now(datetime.timezone.utc)
 reference_time = device_time
 error_msg = ""
 
-sensor_1 = RandomWalk()
+sensor_1 = SimulatedTemperature()
 
 app = typer.Typer(help=f"{DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} Simulator")
 
@@ -88,7 +89,8 @@ def clear():
 
 
 def get_value():
-    return next(sensor_1)
+    _, temperature = next(sensor_1)
+    return temperature
 
 
 COMMAND_ACTIONS_RESPONSES = {

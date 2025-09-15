@@ -1,6 +1,6 @@
 [project]
 name = "cgse-dummy"
-version = "0.5.0"
+version = "0.6.0"
 description = "Demonstration of a CGSE package with a dummy device driver"
 authors = [
     {name = "IVS KU Leuven"}
@@ -10,7 +10,7 @@ maintainers = [
     {name = "Sara Regibo", email = "sara.regibo@kuleuven.be"}
 ]
 readme = {"file" = "README.md", "content-type" = "text/markdown"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = [
     "CGSE",
@@ -24,6 +24,7 @@ dependencies = [
     "cgse-common",
     "cgse-core",
     "cgse-tools",
+    "symetrie-hexapod>=0.15.0",
 ]
 
 [project.entry-points."cgse.version"]
@@ -40,8 +41,18 @@ explore = "cgse_dummy.cgse_explore"
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.10.6",
     "pytest>=8.3.4",
+    "pytest-cov>=6.2.1",
     "ruff>=0.9.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+testpaths = ["tests"]
+addopts = "-rA --cov --cov-branch --cov-report html"
+filterwarnings = [
+    "ignore::DeprecationWarning"
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -52,7 +63,10 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/egse", "src/cgse_dummy"]
+packages = ["src/cgse_dummy"]
+
+[tool.uv.sources]
+cgse-core = { path = "../cgse/libs/cgse-core", editable = true }
 
 [build-system]
 requires = ["hatchling"]

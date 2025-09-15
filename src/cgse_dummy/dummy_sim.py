@@ -7,43 +7,41 @@ Settings file under the section 'DUMMY DEVICE'.
 
 The following commands are implemented:
 
-- *IDN? — request identification of the device
-
+- *IDN? — returns identification of the device: Manufacturer, Model, Serial Number, Firmware version
+- *RST — reset the instrument
+- *CLS — clear
+- SYSTem:TIME year, month, day, hour, minute, second — set the date/time
+- SYSTem:TIME? — returns the current date/time
+- info — returns a string containing brand name, model name, version, ...
+- get_value — returns a measurement from the simulated temperature
 """
 
 import contextlib
 import datetime
-import logging
+import multiprocessing.process
 import re
 import select
 import socket
 import sys
 
 import typer
+from egse.log import logging
 from egse.device import DeviceConnectionError
 from egse.settings import Settings
 from egse.system import SignalCatcher
-from egse.randomwalk import RandomWalk
+from egse.system import type_name
 
 from cgse_dummy.sim_data import SimulatedTemperature
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("egse.dummy")
 
-_LOGGER = logging.getLogger("cgse_dummy.dummy.sim")
-_VERSION = "0.0.1"
+_VERSION = "0.0.2"
 
-DEVICE_SETTINGS = Settings.load("DUMMY DEVICE")
-CS_SETTINGS = Settings.load("DUMMY CS")
+device_settings = Settings.load("DUMMY DEVICE")
+cs_settings = Settings.load("DUMMY CS")
 
-try:
-    HOSTNAME = CS_SETTINGS.HOSTNAME
-except AttributeError:
-    HOSTNAME = "localhost"
-
-try:
-    PORT = CS_SETTINGS.PORT
-except AttributeError:
-    PORT = 5555
+hostname = cs_settings.get("HOSTNAME", "localhost")
+port = cs_settings.get("PORT", 5555)
 
 device_time = datetime.datetime.now(datetime.timezone.utc)
 reference_time = device_time
@@ -51,12 +49,14 @@ error_msg = ""
 
 sensor_1 = SimulatedTemperature()
 
-app = typer.Typer(help=f"{DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} Simulator")
+app = typer.Typer(help=f"{device_settings.BRAND} {device_settings.MODEL} Simulator")
 
 
 def create_datetime(year, month, day, hour, minute, second):
     global device_time, reference_time
-    device_time = datetime.datetime(year, month, day, hour, minute, second, tzinfo=datetime.timezone.utc)
+    device_time = datetime.datetime(
+        year, month, day, hour, minute, second, tzinfo=datetime.timezone.utc
+    )
     reference_time = datetime.datetime.now(datetime.timezone.utc)
 
 
@@ -66,11 +66,15 @@ def nothing():
 
 def set_time(year, month, day, hour, minute, second):
     print(f"TIME {year}, {month}, {day}, {hour}, {minute}, {second}")
-    create_datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
+    create_datetime(
+        int(year), int(month), int(day), int(hour), int(minute), int(second)
+    )
 
 
 def get_time():
-    current_device_time = device_time + (datetime.datetime.now(datetime.timezone.utc) - reference_time)
+    current_device_time = device_time + (
+        datetime.datetime.now(datetime.timezone.utc) - reference_time
+    )
     msg = current_device_time.strftime("%a %b %d %H:%M:%S %Y")
     print(f":SYST:TIME? {msg = }")
     return msg
@@ -85,6 +89,7 @@ def reset():
 
 
 def clear():
+    """Clear all status data structures in the device."""
     print("CLEAR")
 
 
@@ -94,11 +99,16 @@ def get_value():
 
 
 COMMAND_ACTIONS_RESPONSES = {
-    "*IDN?": (None, f"{DEVICE_SETTINGS.BRAND}, MODEL {DEVICE_SETTINGS.MODEL}, SIMULATOR"),
+    "*IDN?": (
+        None,
+        f"{device_settings.BRAND}, {device_settings.MODEL}, {device_settings.SERIAL_NUMBER}, {_VERSION}",
+    ),
     "*RST": (reset, None),
     "*CLS": (clear, None),
-
-    "info": (None, f"{DEVICE_SETTINGS.BRAND}, MODEL {DEVICE_SETTINGS.MODEL}, SIMULATOR"),
+    "info": (
+        None,
+        f"{device_settings.BRAND}, MODEL {device_settings.MODEL}, {_VERSION}, SIMULATOR",
+    ),
     "get_value": (None, get_value),
 }
 
@@ -106,17 +116,16 @@ COMMAND_ACTIONS_RESPONSES = {
 COMMAND_PATTERNS_ACTIONS_RESPONSES = {
     r":?\*RST": (reset, None),
     r":?SYST(?:em)*:TIME (\d+), (\d+), (\d+), (\d+), (\d+), (\d+)": (set_time, None),
-    r":?SYST(?:em)*:TIME\? 1": (nothing, get_time),
+    r":?SYST(?:em)*:TIME\?": (nothing, get_time),
     r":?SYST(?:em)*:BEEP(?:er)* (\d+), (\d+(?:\.\d+)?)": (beep, None),
 }
 
 
 def process_command(command_string: str) -> str:
-
     global COMMAND_ACTIONS_RESPONSES
     global COMMAND_PATTERNS_ACTIONS_RESPONSES
 
-    # LOGGER.debug(f"{command_string=}")
+    logger.debug(f"{command_string=}")
 
     try:
         action, response = COMMAND_ACTIONS_RESPONSES[command_string]
@@ -129,11 +138,15 @@ def process_command(command_string: str) -> str:
         # try to match with a value
         for key, value in COMMAND_PATTERNS_ACTIONS_RESPONSES.items():
             if match := re.match(key, command_string):
-                # LOGGER.debug(f"{match=}, {match.groups()}")
+                logger.debug(f"{match=}, {match.groups()}")
                 action, response = value
-                # LOGGER.debug(f"{action=}, {response=}")
+                logger.debug(f"{action=}, {response=}")
                 action and action(*match.groups())
-                return error_msg or (response if isinstance(response, str) or response is None else response())
+                return error_msg or (
+                    response
+                    if isinstance(response, str) or response is None
+                    else response()
+                )
         return f"ERROR: unknown command string: {command_string}"
 
 
@@ -144,7 +157,9 @@ def run_simulator():
     """
     global error_msg
 
-    _LOGGER.info(f"Starting the {DEVICE_SETTINGS.MODEL} Simulator")
+    multiprocessing.current_process().name = "dummy_sim"
+
+    logger.info(f"Starting the {device_settings.MODEL} Simulator")
 
     killer = SignalCatcher()
 
@@ -152,7 +167,7 @@ def run_simulator():
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((HOSTNAME, PORT))
+        sock.bind((hostname, port))
         sock.listen()
         sock.settimeout(timeout)
         while True:
@@ -163,61 +178,74 @@ def run_simulator():
                 if killer.term_signal_received:
                     return
             with conn:
-                _LOGGER.info(f'Accepted connection from {addr}')
-                conn.sendall(f'This is {DEVICE_SETTINGS.BRAND} {DEVICE_SETTINGS.MODEL} {_VERSION}.sim'.encode())
+                logger.info(f"Accepted connection from {addr}")
+                conn.sendall(
+                    f"This is {device_settings.BRAND} {device_settings.MODEL} {_VERSION}.sim".encode()
+                )
                 try:
                     error_msg = ""
                     while True:
-
                         read_sockets, _, _ = select.select([conn], [], [], timeout)
 
                         if conn in read_sockets:
                             data = conn.recv(4096).decode().rstrip()
-                            _LOGGER.debug(f"{data = }")
+                            logger.debug(f"{data = }")
                             # Now that we use `select` I don't think the following will ever be true
                             # if not data:
-                            #     _LOGGER.info("Client closed connection, accepting new connection...")
+                            #     logger.info("Client closed connection, accepting new connection...")
                             #     break
                             if data.strip() == "STOP":
-                                _LOGGER.info("Client requested to terminate...")
+                                logger.info("Client requested to terminate...")
                                 sock.close()
                                 return
-                            for cmd in data.split(';'):
+                            for cmd in data.split(";"):
+                                logger.debug(f"{cmd=}")
                                 response = process_command(cmd.strip())
+                                logger.debug(f"{response=}")
                                 if response is not None:
                                     response_b = f"{response}\n".encode()
-                                    _LOGGER.debug(f"write: {response_b = }")
+                                    logger.debug(f"write: {response_b=}")
                                     conn.sendall(response_b)
 
                         if killer.term_signal_received:
-                            _LOGGER.info("Terminating...")
+                            logger.info("Terminating...")
                             sock.close()
                             return
                         if killer.user_signal_received:
                             if killer.signal_name == "SIGUSR1":
-                                _LOGGER.info("SIGUSR1 is not supported by this simulator")
+                                logger.info(
+                                    "SIGUSR1 is not supported by this simulator"
+                                )
                             if killer.signal_name == "SIGUSR2":
-                                _LOGGER.info("SIGUSR2 is not supported by this simulator")
+                                logger.info(
+                                    "SIGUSR2 is not supported by this simulator"
+                                )
                             killer.clear()
 
                 except ConnectionResetError as exc:
-                    _LOGGER.info(f"ConnectionResetError: {exc}")
+                    logger.info(f"ConnectionResetError: {exc}")
                 except Exception as exc:
-                    _LOGGER.info(f"{exc.__class__.__name__} caught: {exc.args}")
+                    logger.info(f"{exc.__class__.__name__} caught: {exc.args}")
 
 
-def send_request(cmd: str) -> bytes:
+def send_request(cmd: str, _type: str = "query") -> bytes:
+    from cgse_dummy.dummy_dev import Dummy
 
-    from cgse_dummy.dummy_devif import DummyEthernetInterface
+    response = None
 
-    daq_dev = DummyEthernetInterface(hostname=HOSTNAME, port=PORT)
-    daq_dev.connect()
-
-    response = daq_dev.query(cmd)
-
-    daq_dev.disconnect()
+    with Dummy(hostname=hostname, port=port) as daq_dev:
+        if _type == "query":
+            response = daq_dev.query(cmd)
+        elif _type == "write":
+            daq_dev.write(cmd)
+        else:
+            logger.info(f"Unknown type {_type} for send_request.")
 
     return response
+
+
+def send_command(cmd: str) -> None:
+    send_request(cmd, _type="write")
 
 
 @app.command()
@@ -225,7 +253,7 @@ def start():
     try:
         run_simulator()
     except OSError as exc:
-        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
+        print(f"ERROR: Caught {type_name(exc)}: {exc}", file=sys.stderr)
 
 
 @app.command()
@@ -234,7 +262,7 @@ def status():
         response = send_request("*IDN?")
         print(f"{response.decode().rstrip()}")
     except DeviceConnectionError as exc:
-        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
+        print(f"ERROR: Caught {type_name(exc)}: {exc}", file=sys.stderr)
 
 
 @app.command()
@@ -243,8 +271,8 @@ def stop():
         response = send_request("STOP")
         print(f"{response.decode().rstrip()}")
     except DeviceConnectionError as exc:
-        print(f"ERROR: Caught {exc.__class__.__name__}: {exc}", file=sys.stderr)
+        print(f"ERROR: Caught {type_name(exc)}: {exc}", file=sys.stderr)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()

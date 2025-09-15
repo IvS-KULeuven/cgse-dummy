@@ -6,12 +6,16 @@ from cgse_dummy.dummy_cs import DummyProxy
 
 
 def test_start_dummy_cs():
+    print()
 
-    proc = SubProcess("Dummy CS", [sys.executable, "-m", "cgse_dummy.dummy_cs", "start"])
+    proc = SubProcess(
+        "Dummy CS", [sys.executable, "-m", "cgse_dummy.dummy_cs", "start"]
+    )
     proc.execute()
 
     with DummyProxy() as dummy:
-        assert dummy.info() == "DUMMY INSTRUMENTS, MODEL DAQ-1234, SIMULATOR"
-        assert 0 <= dummy.get_value() <= 1.0
+        assert dummy.info() == "DUMMY INSTRUMENTS, DAQ-1234, 0.0.2, SIMULATOR"
+        assert -180.0 <= dummy.get_value() <= 25.0
+        print(f"{dummy.get_value() = }")
 
     proc.quit()

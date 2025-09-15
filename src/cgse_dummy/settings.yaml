@@ -4,12 +4,14 @@ PACKAGES:
 DUMMY DEVICE:
     BRAND:          DUMMY INSTRUMENTS
     MODEL:                   DAQ-1234
+    SERIAL_NUMBER:       SN2025-X23-5
     HOSTNAME:               localhost
     PORT:                        5555
     TIMEOUT:                        1  # [seconds]
 
 DUMMY CS:
 
+    SERVICE_TYPE:            DUMMY_CS
     PROTOCOL:                     tcp
     HOSTNAME:               localhost
     COMMANDING_PORT:             7770

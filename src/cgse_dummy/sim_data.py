@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 
 
 def _simulate_temperature_data(
-        start_temp=25,  # Room temperature (ºC)
-        first_target=-70,  # First cooling target (ºC)
-        second_target=-40,  # Heating target (ºC)
-        final_target=-180,  # Final cooling target (ºC)
-        total_time=720,  # Total time in minutes (12 hours)
-        sample_rate=10  # Seconds between measurements
+    start_temp=25,  # Room temperature (ºC)
+    first_target=-70,  # First cooling target (ºC)
+    second_target=-40,  # Heating target (ºC)
+    final_target=-180,  # Final cooling target (ºC)
+    total_time=720,  # Total time in minutes (12 hours)
+    sample_rate=10,  # Seconds between measurements
 ) -> tuple[list[datetime], list[float]]:
     """
     Simulate temperature sensor data with a plateau phase and a cooling period.
@@ -50,7 +50,7 @@ def _simulate_temperature_data(
     # Phase 1: Initial cooling to -70°C (exponential)
     initial_time = time[:idx1]
     temp[:idx1] = start_temp + (first_target - start_temp) * (
-            1 - np.exp(-initial_time / 15)  # Time constant for first cooling
+        1 - np.exp(-initial_time / 15)  # Time constant for first cooling
     )
 
     # Phase 2: First plateau at -70°C
@@ -59,7 +59,7 @@ def _simulate_temperature_data(
     # Phase 3: Heating to -40°C (exponential approach)
     heating_time = time[idx2:idx3] - time[idx2]
     temp[idx2:idx3] = first_target + (second_target - first_target) * (
-            1 - np.exp(-heating_time / 10)  # Time constant for heating
+        1 - np.exp(-heating_time / 10)  # Time constant for heating
     )
 
     # Phase 4: Second plateau at -40°C
@@ -68,14 +68,16 @@ def _simulate_temperature_data(
     # Phase 5: Final cooling to -180°C
     final_time = time[idx4:] - time[idx4]
     temp[idx4:] = second_target + (final_target - second_target) * (
-            1 - np.exp(-final_time / 100)  # Time constant for final cooling
+        1 - np.exp(-final_time / 100)  # Time constant for final cooling
     )
 
     # Add different levels of noise for each phase
     base_noise = np.random.normal(0, 0.2, n_samples)
 
     # Add occasional spikes
-    spike_locations = np.random.choice(n_samples, size=int(n_samples * 0.005), replace=False)
+    spike_locations = np.random.choice(
+        n_samples, size=int(n_samples * 0.005), replace=False
+    )
     spike_noise = np.zeros(n_samples)
     spike_noise[spike_locations] = np.random.normal(0, 3, size=len(spike_locations))
 
@@ -88,7 +90,9 @@ def _simulate_temperature_data(
 
     # Create timestamps
     start_time = datetime.now()
-    timestamps = [start_time + timedelta(seconds=i * sample_rate) for i in range(n_samples)]
+    timestamps = [
+        start_time + timedelta(seconds=i * sample_rate) for i in range(n_samples)
+    ]
 
     return timestamps, temp.tolist()
 
@@ -106,6 +110,7 @@ class SimulatedTemperature:
     minutes. After the second plateau we cool down until -180ºC.
 
     """
+
     def __init__(self):
         self.timestamps: list[datetime]
         self.temperatures: list[float]
@@ -128,15 +133,14 @@ class SimulatedTemperature:
         return x, y
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # for timestamp, temperature in SimulatedTemperature():
+    #     print(f"{timestamp = }, {temperature = }")
+    #     time.sleep(1.0)
 
-    for timestamp, temperature in SimulatedTemperature():
-        print(f"{timestamp = }, {temperature = }")
-        time.sleep(1.0)
+    import matplotlib.pyplot as plt
 
-    # import matplotlib.pyplot as plt
-    #
-    # x, y = _simulate_temperature_data()
-    #
-    # plt.plot(x, y)
-    # plt.show()
+    x, y = _simulate_temperature_data()
+
+    plt.plot(x, y)
+    plt.show()

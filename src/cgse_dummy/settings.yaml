@@ -2,6 +2,7 @@ PACKAGES:
     CGSE_DUMMY: A demonstration package with a dummy device driver
 
 DUMMY DEVICE:
+    
     BRAND:          DUMMY INSTRUMENTS
     MODEL:                   DAQ-1234
     SERIAL_NUMBER:       SN2025-X23-5
@@ -12,6 +13,7 @@ DUMMY DEVICE:
 DUMMY CS:
 
     SERVICE_TYPE:            DUMMY_CS
+    PROCESS_NAME:            dummy_cs
     PROTOCOL:                     tcp
     HOSTNAME:               localhost
     COMMANDING_PORT:             7770

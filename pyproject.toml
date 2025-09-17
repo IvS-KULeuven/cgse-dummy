@@ -1,6 +1,6 @@
 [project]
 name = "cgse-dummy"
-version = "0.6.0"
+version = "0.6.1"
 description = "Demonstration of a CGSE package with a dummy device driver"
 authors = [
     {name = "IVS KU Leuven"}
@@ -24,7 +24,6 @@ dependencies = [
     "cgse-common",
     "cgse-core",
     "cgse-tools",
-    "symetrie-hexapod>=0.15.0",
 ]
 
 [project.entry-points."cgse.version"]
@@ -33,7 +32,7 @@ cgse-dummy = 'egse.version:get_version_installed'
 [project.entry-points."cgse.settings"]
 cgse-dummy = "cgse_dummy:settings.yaml"
 
-[project.entry-points."cgse.service"]
+[project.entry-points."cgse.service.example"]
 dummy = 'cgse_dummy.cgse_services:dummy'
 
 [project.entry-points."cgse.explore"]

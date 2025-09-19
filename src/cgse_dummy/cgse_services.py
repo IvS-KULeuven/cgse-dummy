@@ -3,10 +3,11 @@
 import subprocess
 import sys
 import textwrap
-from pathlib import Path
 
 import rich
 import typer
+
+from egse.system import redirect_output_to_log
 
 dummy = typer.Typer(
     name="dummy",
@@ -26,7 +27,7 @@ def start_dummy_cs():
     """Start the dummy service, dummy_cs."""
     rich.print("Starting service dummy_cs..")
 
-    out = open(Path("~/.dummy_cs.start.out").expanduser(), "w")
+    out = redirect_output_to_log(".dummy_cs.start.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_cs", "start"],
@@ -42,7 +43,7 @@ def stop_dummy_cs():
     """Stop the dummy service, dummy_cs."""
     rich.print("Terminating service dummy_cs..")
 
-    out = open(Path("~/.dummy_cs.stop.out").expanduser(), "w")
+    out = redirect_output_to_log(".dummy_cs.stop.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_cs", "stop"],
@@ -69,7 +70,7 @@ def start_dummy_sim():
     """Start the dummy device Simulator."""
     rich.print("Starting service DUMMY Simulator")
 
-    out = open(Path("~/.dummy_sim.start.out").expanduser(), "w")
+    out = redirect_output_to_log(".dummy_sim.start.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_sim", "start"],
@@ -85,7 +86,7 @@ def stop_dummy_sim():
     """Stop the dummy device Simulator."""
     rich.print("Terminating the DUMMY simulator.")
 
-    out = open(Path("~/.dummy_sim.stop.out").expanduser(), "w")
+    out = redirect_output_to_log(".dummy_sim.stop.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_sim", "stop"],

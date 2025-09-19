@@ -1,6 +1,6 @@
 [project]
 name = "cgse-dummy"
-version = "0.6.1"
+version = "0.6.2"
 description = "Demonstration of a CGSE package with a dummy device driver"
 authors = [
     {name = "IVS KU Leuven"}
@@ -45,6 +45,12 @@ dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.9.0",
 ]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocs-autorefs",
+    "mkdocstrings-python",
+]
 
 [tool.pytest.ini_options]
 pythonpath = "src"
@@ -63,9 +69,6 @@ exclude = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cgse_dummy"]
-
-[tool.uv.sources]
-cgse-core = { path = "../cgse/libs/cgse-core", editable = true }
 
 [build-system]
 requires = ["hatchling"]

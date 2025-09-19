@@ -5,24 +5,19 @@ The control server for the dummy device.
 import multiprocessing
 import random
 import sys
-import threading
-import time
-from functools import partial
 from typing import Callable
 
-import typer
 import rich
+import typer
 import zmq
-from cgse_dummy.dummy_dev import Dummy
 from egse.command import ClientServerCommand
-from egse.confman import is_configuration_manager_active
+from egse.connect import get_endpoint
 from egse.control import ControlServer
 from egse.control import is_control_server_active
 from egse.decorators import dynamic_interface
 from egse.device import DeviceConnectionError
 from egse.device import DeviceConnectionState
 from egse.device import DeviceInterface
-from egse.listener import Event
 from egse.listener import EventInterface
 from egse.log import logging
 from egse.protocol import CommandProtocol
@@ -39,6 +34,8 @@ from egse.system import format_datetime
 from egse.system import type_name
 from egse.zmq_ser import bind_address
 from egse.zmq_ser import connect_address
+
+from cgse_dummy.dummy_dev import Dummy
 
 logger = logging.getLogger("egse.dummy")
 
@@ -71,6 +68,10 @@ commands = attrdict(
         },
         "get_value": {
             "description": "Read a value from the device.",
+        },
+        "division": {
+            "description": "Return a / b",
+            "cmd": "{a} {b}"
         },
         "handle_event": {
             "description": "Notification of an event",
@@ -105,8 +106,27 @@ class DummyInterface(DeviceInterface):
     @dynamic_interface
     def get_value(self, *args, **kwargs): ...
 
+    @dynamic_interface
+    def division(self, a: int | float, b: int | float) -> float:
+        """
+        Return the result of the number 'a' divided by the number 'b'.
+
+        This method can also be used during testing to cause a ZeroDivisionError
+        that should return a Failure object.
+        """
+        raise NotImplementedError("The division() method has not been implemented.")
+
 
 class DummyProxy(Proxy, DummyInterface, EventInterface):
+    """
+    A Proxy that connects to the Dummy control server.
+
+    Args:
+        protocol: the transport protocol [default is taken from settings file]
+        hostname: location of the control server (IP address) [default is taken from settings file]
+        port: TCP port on which the control server is listening for commands [default is taken from settings file]
+    """
+
     def __init__(
         self,
         protocol=cs_settings.PROTOCOL,
@@ -114,13 +134,8 @@ class DummyProxy(Proxy, DummyInterface, EventInterface):
         port=cs_settings.COMMANDING_PORT,
         timeout=cs_settings.TIMEOUT,
     ):
-        """
-        Args:
-            protocol: the transport protocol [default is taken from settings file]
-            hostname: location of the control server (IP address) [default is taken from settings file]
-            port: TCP port on which the control server is listening for commands [default is taken from settings file]
-        """
-        super().__init__(connect_address(protocol, hostname, port), timeout=timeout)
+        endpoint = get_endpoint(cs_settings.SERVICE_TYPE, protocol, hostname, port)
+        super().__init__(endpoint, timeout=timeout)
 
 
 class DummyController(DummyInterface, EventInterface):
@@ -171,6 +186,9 @@ class DummyController(DummyInterface, EventInterface):
 
     def get_value(self) -> float:
         return float(self._dev.trans("get_value").decode().strip())
+
+    def division(self, a, b) -> float:
+        return a / b
 
 
 class DummyProtocol(CommandProtocol):
@@ -272,7 +290,7 @@ class DummyControlServer(ControlServer):
         return cs_settings.MONITORING_PORT
 
     def get_storage_mnemonic(self):
-        return "DUMMY-HK"
+        return cs_settings.STORAGE_MNEMONIC
 
     def get_event_subscriptions(self) -> list[str]:
         return ["new_setup"]

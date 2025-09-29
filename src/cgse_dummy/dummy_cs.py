@@ -18,7 +18,6 @@ from egse.decorators import dynamic_interface
 from egse.device import DeviceConnectionError
 from egse.device import DeviceConnectionState
 from egse.device import DeviceInterface
-from egse.listener import EventInterface
 from egse.log import logging
 from egse.protocol import CommandProtocol
 from egse.proxy import Proxy
@@ -73,12 +72,6 @@ commands = attrdict(
             "description": "Return a / b",
             "cmd": "{a} {b}"
         },
-        "handle_event": {
-            "description": "Notification of an event",
-            "device_method": "handle_event",
-            "cmd": "{event}",
-            "response": "handle_device_method",
-        },
     }
 )
 
@@ -117,7 +110,7 @@ class DummyInterface(DeviceInterface):
         raise NotImplementedError("The division() method has not been implemented.")
 
 
-class DummyProxy(Proxy, DummyInterface, EventInterface):
+class DummyProxy(Proxy, DummyInterface):
     """
     A Proxy that connects to the Dummy control server.
 
@@ -138,7 +131,7 @@ class DummyProxy(Proxy, DummyInterface, EventInterface):
         super().__init__(endpoint, timeout=timeout)
 
 
-class DummyController(DummyInterface, EventInterface):
+class DummyController(DummyInterface):
     def __init__(self, control_server):
         super().__init__()
 

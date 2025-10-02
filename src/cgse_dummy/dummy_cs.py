@@ -68,10 +68,7 @@ commands = attrdict(
         "get_value": {
             "description": "Read a value from the device.",
         },
-        "division": {
-            "description": "Return a / b",
-            "cmd": "{a} {b}"
-        },
+        "division": {"description": "Return a / b", "cmd": "{a} {b}"},
     }
 )
 

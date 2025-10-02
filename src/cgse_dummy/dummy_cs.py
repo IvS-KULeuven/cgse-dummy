@@ -118,6 +118,7 @@ class DummyProxy(Proxy, DummyInterface):
         protocol: the transport protocol [default is taken from settings file]
         hostname: location of the control server (IP address) [default is taken from settings file]
         port: TCP port on which the control server is listening for commands [default is taken from settings file]
+        timeout (float): the time in seconds before a timeout will occur
     """
 
     def __init__(
@@ -267,6 +268,8 @@ class DummyControlServer(ControlServer):
         self.poller.register(self.dev_ctrl_cmd_sock, zmq.POLLIN)
 
         self.set_hk_delay(cs_settings.HK_DELAY)
+
+        self.service_name = cs_settings.PROCESS_NAME
 
         self.register_service(service_type=cs_settings.SERVICE_TYPE)
 

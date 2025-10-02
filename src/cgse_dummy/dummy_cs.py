@@ -18,7 +18,6 @@ from egse.decorators import dynamic_interface
 from egse.device import DeviceConnectionError
 from egse.device import DeviceConnectionState
 from egse.device import DeviceInterface
-from egse.listener import EventInterface
 from egse.log import logging
 from egse.protocol import CommandProtocol
 from egse.proxy import Proxy
@@ -69,16 +68,7 @@ commands = attrdict(
         "get_value": {
             "description": "Read a value from the device.",
         },
-        "division": {
-            "description": "Return a / b",
-            "cmd": "{a} {b}"
-        },
-        "handle_event": {
-            "description": "Notification of an event",
-            "device_method": "handle_event",
-            "cmd": "{event}",
-            "response": "handle_device_method",
-        },
+        "division": {"description": "Return a / b", "cmd": "{a} {b}"},
     }
 )
 
@@ -117,7 +107,7 @@ class DummyInterface(DeviceInterface):
         raise NotImplementedError("The division() method has not been implemented.")
 
 
-class DummyProxy(Proxy, DummyInterface, EventInterface):
+class DummyProxy(Proxy, DummyInterface):
     """
     A Proxy that connects to the Dummy control server.
 
@@ -125,6 +115,7 @@ class DummyProxy(Proxy, DummyInterface, EventInterface):
         protocol: the transport protocol [default is taken from settings file]
         hostname: location of the control server (IP address) [default is taken from settings file]
         port: TCP port on which the control server is listening for commands [default is taken from settings file]
+        timeout (float): the time in seconds before a timeout will occur
     """
 
     def __init__(
@@ -138,7 +129,7 @@ class DummyProxy(Proxy, DummyInterface, EventInterface):
         super().__init__(endpoint, timeout=timeout)
 
 
-class DummyController(DummyInterface, EventInterface):
+class DummyController(DummyInterface):
     def __init__(self, control_server):
         super().__init__()
 
@@ -274,6 +265,8 @@ class DummyControlServer(ControlServer):
         self.poller.register(self.dev_ctrl_cmd_sock, zmq.POLLIN)
 
         self.set_hk_delay(cs_settings.HK_DELAY)
+
+        self.service_name = cs_settings.PROCESS_NAME
 
         self.register_service(service_type=cs_settings.SERVICE_TYPE)
 

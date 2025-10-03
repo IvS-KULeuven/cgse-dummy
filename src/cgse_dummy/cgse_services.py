@@ -27,7 +27,7 @@ def start_dummy_cs():
     """Start the dummy service, dummy_cs."""
     rich.print("Starting service dummy_cs..")
 
-    out = redirect_output_to_log(".dummy_cs.start.log")
+    out = redirect_output_to_log("dummy_cs.start.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_cs", "start"],
@@ -43,7 +43,7 @@ def stop_dummy_cs():
     """Stop the dummy service, dummy_cs."""
     rich.print("Terminating service dummy_cs..")
 
-    out = redirect_output_to_log(".dummy_cs.stop.log")
+    out = redirect_output_to_log("dummy_cs.stop.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_cs", "stop"],
@@ -70,7 +70,7 @@ def start_dummy_sim():
     """Start the dummy device Simulator."""
     rich.print("Starting service DUMMY Simulator")
 
-    out = redirect_output_to_log(".dummy_sim.start.log")
+    out = redirect_output_to_log("dummy_sim.start.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_sim", "start"],
@@ -86,7 +86,7 @@ def stop_dummy_sim():
     """Stop the dummy device Simulator."""
     rich.print("Terminating the DUMMY simulator.")
 
-    out = redirect_output_to_log(".dummy_sim.stop.log")
+    out = redirect_output_to_log("dummy_sim.stop.log")
 
     subprocess.Popen(
         [sys.executable, "-m", "cgse_dummy.dummy_sim", "stop"],

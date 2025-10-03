@@ -10,6 +10,7 @@ from typing import Callable
 import rich
 import typer
 import zmq
+from cgse_dummy.dummy_dev import Dummy
 from egse.command import ClientServerCommand
 from egse.connect import get_endpoint
 from egse.control import ControlServer
@@ -18,7 +19,8 @@ from egse.decorators import dynamic_interface
 from egse.device import DeviceConnectionError
 from egse.device import DeviceConnectionState
 from egse.device import DeviceInterface
-from egse.log import logging
+from egse.log import logger
+from egse.logger import remote_logging
 from egse.protocol import CommandProtocol
 from egse.proxy import Proxy
 from egse.response import Failure
@@ -33,10 +35,6 @@ from egse.system import format_datetime
 from egse.system import type_name
 from egse.zmq_ser import bind_address
 from egse.zmq_ser import connect_address
-
-from cgse_dummy.dummy_dev import Dummy
-
-logger = logging.getLogger("egse.dummy")
 
 cs_settings = Settings.load("DUMMY CS")
 dev_settings = Settings.load("DUMMY DEVICE")
@@ -255,10 +253,12 @@ class DummyControlServer(ControlServer):
 
         super().__init__()
 
+        self.logger = logger
+
         self.device_protocol = DummyProtocol(self)
         self.device_protocol.bind(self.dev_ctrl_cmd_sock)
 
-        logger.info(
+        self.logger.info(
             f"Binding ZeroMQ socket to {self.device_protocol.get_bind_address()} for {type_name(self)}"
         )
 
@@ -293,9 +293,9 @@ class DummyControlServer(ControlServer):
 
     def handle_event_new_setup(self, event_data: dict):
         if data := event_data.get("data"):
-            logger.info(f"Handling 'new_setup' event with {data=}")
+            self.logger.info(f"Handling 'new_setup' event with {data=}")
         else:
-            logger.warning("Handling 'new_setup' event, but no 'data' part found.")
+            self.logger.warning("Handling 'new_setup' event, but no 'data' part found.")
 
     def before_serve(self): ...
 
@@ -332,18 +332,19 @@ def start():
     # instantiate classes that are passed in ZeroMQ messages and de-pickled.
     from cgse_dummy.dummy_cs import DummyControlServer  # noqa
 
-    try:
-        control_server = DummyControlServer()
-        control_server.serve()
-    except KeyboardInterrupt:
-        print("Shutdown requested...exiting")
-    except SystemExit as exit_code:
-        print(f"System Exit with code {exit_code}.")
-        sys.exit(-1)
-    except Exception:  # noqa
-        import traceback
+    with remote_logging():
+        try:
+            control_server = DummyControlServer()
+            control_server.serve()
+        except KeyboardInterrupt:
+            print("Shutdown requested...exiting")
+        except SystemExit as exit_code:
+            print(f"System Exit with code {exit_code}.")
+            sys.exit(-1)
+        except Exception:  # noqa
+            import traceback
 
-        traceback.print_exc(file=sys.stdout)
+            traceback.print_exc(file=sys.stdout)
 
 
 @app.command()

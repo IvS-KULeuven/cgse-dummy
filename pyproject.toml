@@ -26,6 +26,10 @@ dependencies = [
     "cgse-tools",
 ]
 
+[project.scripts]
+dummy_cs = 'cgse_dummy.dummy_cs:app'
+dummy_sim = 'cgse_dummy.dummy_sim:app'
+
 [project.entry-points."cgse.version"]
 cgse-dummy = 'egse.version:get_version_installed'
 
